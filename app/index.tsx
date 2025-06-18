@@ -24,7 +24,7 @@ export default function WelcomeScreen() {
   return (
     <View style={styles.container}>
       <Image
-        source={require("../assets/images/icon.png")}
+        source={require("../assets/images/insta.png")}
         style={styles.logo}
       />
       <Text style={styles.title}>MoodCam</Text>
@@ -61,7 +61,7 @@ const styles = StyleSheet.create({
   },
   logo: {
     width: 100,
-    height: 100,
+    height: 120,
     marginBottom: 20,
   },
   title: {

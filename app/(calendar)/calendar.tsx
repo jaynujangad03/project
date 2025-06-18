@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useIsFocused } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
-import { Image, Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, StyleSheet, Text, View } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 
 interface MarkedDate {
@@ -11,9 +12,10 @@ interface MarkedDate {
 
 export default function CalendarScreen() {
   const [markedDates, setMarkedDates] = useState<Record<string, MarkedDate>>({});
-  const [selectedEntry, setSelectedEntry] = useState<any | null>(null);
-  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedDayEntries, setSelectedDayEntries] = useState<any[]>([]);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [entries, setEntries] = useState<any[]>([]);
+  const isFocused = useIsFocused();
 
   // Helper to get current user email
   const getCurrentUserEmail = async () => {
@@ -31,10 +33,16 @@ export default function CalendarScreen() {
       const data = await AsyncStorage.getItem(key);
       if (data) {
         const entries = JSON.parse(data);
+        console.log('Loaded entries from AsyncStorage:', entries);
         setEntries(entries);
         const marks: Record<string, MarkedDate> = {};
+        // Only show the latest mood for each date
+        const latestEntryMap: Record<string, any> = {};
         entries.forEach((entry: any) => {
-          marks[entry.date] = {
+          latestEntryMap[entry.date] = entry; // overwrite to keep the latest
+        });
+        Object.entries(latestEntryMap).forEach(([date, entry]) => {
+          marks[date] = {
             marked: true,
             customStyles: {
               container: { backgroundColor: '#ffd700' },
@@ -44,23 +52,45 @@ export default function CalendarScreen() {
           };
         });
         setMarkedDates(marks);
+      } else {
+        setEntries([]);
+        setMarkedDates({});
       }
     };
     fetchEntries();
-  }, []);
+  }, [isFocused]);
 
   const handleDayPress = (day: any) => {
-    const entry = entries.find((e) => e.date === day.dateString);
-    if (entry) {
-      setSelectedEntry(entry);
-      setModalVisible(true);
-    }
+    // Ensure both are strings and trimmed
+    const pressedDate = String(day.dateString).trim();
+    const dayEntries = entries.filter((e) => String(e.date).trim() === pressedDate);
+    console.log('Pressed date:', pressedDate, 'Entries for this day:', dayEntries);
+    setSelectedDayEntries(dayEntries);
+    setSelectedDate(pressedDate);
   };
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Mood Calendar</Text>
       <Calendar
+        style={{
+          width: 360,
+          alignSelf: 'center',
+          borderRadius: 16,
+          overflow: 'hidden',
+          marginBottom: 20,
+          elevation: 2,
+        }}
+        theme={{
+          calendarBackground: '#fff',
+          textSectionTitleColor: '#222',
+          dayTextColor: '#222',
+          todayTextColor: '#007aff',
+          selectedDayBackgroundColor: '#ffd700',
+          selectedDayTextColor: '#222',
+          monthTextColor: '#222',
+          arrowColor: '#007aff',
+        }}
         markingType={'custom'}
         markedDates={Object.fromEntries(
           Object.entries(markedDates).map(([date, mark]) => [
@@ -88,30 +118,32 @@ export default function CalendarScreen() {
           );
         }}
       />
-      <Modal visible={modalVisible} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            {selectedEntry && (
-              <>
-                <Text style={styles.modalTitle}>Mood Entry</Text>
-                <Text style={styles.modalMood}>{selectedEntry.mood.emoji} {selectedEntry.mood.label}</Text>
-                <Text style={styles.modalDate}>{selectedEntry.date}</Text>
-                {selectedEntry.photo && (
-                  <Image source={{ uri: selectedEntry.photo }} style={styles.modalImage} />
+      {selectedDate && (
+        <View style={styles.selectedDayContainer}>
+          <Text style={styles.modalTitle}>Mood Entries for {selectedDate}</Text>
+          {/* Debug: Show raw entries for this day */}
+          <Text style={{fontSize:12, color:'#888', marginBottom:8}}>
+            Debug: {JSON.stringify(selectedDayEntries)}
+          </Text>
+          {selectedDayEntries.length > 0 ? (
+            selectedDayEntries.map((entry, idx) => (
+              <View key={idx} style={{marginBottom: 18, alignItems: 'center', width: 220}}>
+                <Text style={styles.modalMood}>{entry.mood.emoji} {entry.mood.label}</Text>
+                {entry.photo && (
+                  <Image source={{ uri: entry.photo }} style={styles.modalImage} />
                 )}
-                {selectedEntry.note ? (
-                  <Text style={styles.modalNote}>{selectedEntry.note}</Text>
+                {entry.note ? (
+                  <Text style={styles.modalNote}>{entry.note}</Text>
                 ) : (
                   <Text style={styles.modalNote}>(No note)</Text>
                 )}
-                <TouchableOpacity style={styles.closeButton} onPress={() => setModalVisible(false)}>
-                  <Text style={{ color: '#007aff', fontSize: 16 }}>Close</Text>
-                </TouchableOpacity>
-              </>
-            )}
-          </View>
+              </View>
+            ))
+          ) : (
+            <Text style={styles.modalNote}>No entries for this day.</Text>
+          )}
         </View>
-      </Modal>
+      )}
     </View>
   );
 }
@@ -129,18 +161,16 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 16,
   },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContent: {
+  selectedDayContainer: {
     backgroundColor: '#fff',
     borderRadius: 16,
     padding: 24,
     alignItems: 'center',
     width: 300,
+    alignSelf: 'center',
+    marginTop: 8,
+    marginBottom: 16,
+    elevation: 2,
   },
   modalTitle: {
     fontSize: 22,

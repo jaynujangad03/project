@@ -102,6 +102,37 @@ export default function SettingsScreen() {
     }
   };
 
+  const handleExportText = async () => {
+    const email = await getCurrentUserEmail();
+    if (!email) {
+      Alert.alert('No user logged in.');
+      return;
+    }
+    const key = `moodEntries_${email}`;
+    const data = await AsyncStorage.getItem(key);
+    if (data) {
+      try {
+        const entries = JSON.parse(data);
+        let text = 'MoodCam Mood Log\n\n';
+        entries.forEach((entry: any) => {
+          text += `${entry.date}: ${entry.mood.emoji} ${entry.mood.label}\n`;
+          if (entry.note) text += `Note: ${entry.note}\n`;
+          text += '\n';
+        });
+        const fileUri = FileSystem.cacheDirectory + 'moodcam-export.txt';
+        await FileSystem.writeAsStringAsync(fileUri, text, { encoding: FileSystem.EncodingType.UTF8 });
+        await Sharing.shareAsync(fileUri, {
+          mimeType: 'text/plain',
+          dialogTitle: 'Export MoodCam Log as Text',
+        });
+      } catch (e) {
+        Alert.alert('Export Failed', 'Could not export data.');
+      }
+    } else {
+      Alert.alert('No data to export.');
+    }
+  };
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Settings & Profile</Text>
@@ -124,7 +155,10 @@ export default function SettingsScreen() {
         <Switch value={reminderEnabled} onValueChange={scheduleReminder} />
       </View>
       <TouchableOpacity style={styles.button} onPress={handleExport}>
-        <Text style={styles.buttonText}>Export Data (JSON)</Text>
+        <Text style={styles.buttonText}>Export as JSON</Text>
+      </TouchableOpacity>
+      <TouchableOpacity style={styles.button} onPress={handleExportText}>
+        <Text style={styles.buttonText}>Export as Text</Text>
       </TouchableOpacity>
       <TouchableOpacity style={[styles.button, { backgroundColor: '#ff4d4d' }]} onPress={handleClearData}>
         <Text style={[styles.buttonText, { color: '#fff' }]}>Clear All Data</Text>

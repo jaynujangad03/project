@@ -44,6 +44,27 @@ export default function RootLayout() {
         name="(settings)/settings"
         options={{ headerShown: false }}
       />
+      <Stack.Screen
+        name="(dashboard)/history"
+        options={{ headerShown: false }}
+        />
+      <Stack.Screen
+        name="(dashboard)/weekly-summary"
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="(dashboard)/gallery"
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="(dashboard)/trends"
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="(dashboard)/settings"
+        options={{ headerShown: false }}
+      />
     </Stack>
+    
   );
 }

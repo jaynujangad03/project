@@ -1,15 +1,40 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import * as Notifications from 'expo-notifications';
 import React, { useState } from 'react';
-import { Image, Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Image, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 const moods = [
   { emoji: '😊', label: 'Happy' },
-  { emoji: '😭', label: 'Sad' },
+  { emoji: '😢', label: 'Sad' },
   { emoji: '😰', label: 'Anxious' },
   { emoji: '😡', label: 'Angry' },
   { emoji: '😍', label: 'Loved' },
+  { emoji: '😎', label: 'Cool' },
+  { emoji: '🤔', label: 'Thinking' },
+  { emoji: '😴', label: 'Sleepy' },
+  { emoji: '😅', label: 'Relieved' },
+  { emoji: '😱', label: 'Shocked' },
+  { emoji: '😇', label: 'Blessed' },
+  { emoji: '🤗', label: 'Hug' },
+  { emoji: '😤', label: 'Determined' },
+  { emoji: '😜', label: 'Playful' },
+  { emoji: '🥳', label: 'Celebrating' },
+  { emoji: '😔', label: 'Disappointed' },
+  { emoji: '😐', label: 'Neutral' },
+  { emoji: '😬', label: 'Awkward' },
+  { emoji: '😭', label: 'Crying' },
+  { emoji: '😋', label: 'Satisfied'},
+ 
 ];
+
+const moodColors: Record<string, string> = {
+  Happy: '#fffbe6', // light yellow
+  Sad: '#e3f0ff',   // muted blue
+  Anxious: '#edeaff', // soft purple
+  Angry: '#ffeaea',  // soft red
+  Loved: '#fff0e6',  // peach
+};
 
 export default function EntryScreen() {
   const [selectedMood, setSelectedMood] = useState<number | null>(null);
@@ -17,8 +42,10 @@ export default function EntryScreen() {
   const [photo, setPhoto] = useState<string | null>(null);
   const [cameraVisible, setCameraVisible] = useState(false);
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
+  const [todayMood, setTodayMood] = useState<string | null>(null);
   const cameraRef = React.useRef<null | any>(null);
   const [permission, requestPermission] = useCameraPermissions();
+  const todayStr = new Date().toISOString().split('T')[0];
 
   React.useEffect(() => {
     if (permission && permission.status !== 'granted') {
@@ -26,6 +53,57 @@ export default function EntryScreen() {
     }
     setHasPermission(permission?.status === 'granted');
   }, [permission]);
+
+  React.useEffect(() => {
+    // Check if today's entry already exists
+    (async () => {
+      const email = await getCurrentUserEmail();
+      if (!email) return;
+      const key = `moodEntries_${email}`;
+      const existing = await AsyncStorage.getItem(key);
+      if (existing) {
+        const entries = JSON.parse(existing);
+        if (entries.some((e: any) => e.date === todayStr)) {
+          setTodayMood(entries.find((e: any) => e.date === todayStr).mood.label);
+        }
+      }
+    })();
+  }, []);
+
+  React.useEffect(() => {
+    // Schedule daily reminder notification
+    (async () => {
+      const email = await getCurrentUserEmail();
+      if (!email) return;
+      const key = `moodEntries_${email}`;
+      const existing = await AsyncStorage.getItem(key);
+      let submittedToday = false;
+      if (existing) {
+        const entries = JSON.parse(existing);
+        if (entries.some((e: any) => e.date === todayStr)) {
+          submittedToday = true;
+        }
+      }
+      // Cancel previous reminders
+      await Notifications.cancelAllScheduledNotificationsAsync();
+      if (!submittedToday) {
+        // Schedule a new reminder for 8:30 PM today
+        const now = new Date();
+        const reminderTime = new Date();
+        reminderTime.setHours(20, 30, 0, 0); // 8:30 PM
+        if (reminderTime > now) {
+          await Notifications.scheduleNotificationAsync({
+            content: {
+              title: 'MoodCam Reminder',
+              body: 'How are you feeling today? Don’t forget to check in 💬',
+              sound: true,
+            },
+            trigger: reminderTime as any, // Type workaround for Expo SDK 53+
+          });
+        }
+      }
+    })();
+  }, []);
 
   const takePhoto = async () => {
     if (cameraRef.current) {
@@ -49,10 +127,11 @@ export default function EntryScreen() {
       return;
     }
     const entry = {
-      date: new Date().toISOString().split('T')[0],
+      date: todayStr,
       mood: moods[selectedMood],
       note,
       photo,
+      timestamp: Date.now(),
     };
     try {
       const email = await getCurrentUserEmail();
@@ -63,7 +142,7 @@ export default function EntryScreen() {
       const key = `moodEntries_${email}`;
       const existing = await AsyncStorage.getItem(key);
       const entries = existing ? JSON.parse(existing) : [];
-      entries.push(entry);
+      entries.push(entry); // Allow multiple per day
       await AsyncStorage.setItem(key, JSON.stringify(entries));
       alert('Mood entry saved!');
       setSelectedMood(null);
@@ -75,7 +154,7 @@ export default function EntryScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: todayMood && moodColors[todayMood] ? moodColors[todayMood] : '#fff' }]}> 
       <Text style={styles.title}>How are you feeling today?</Text>
       <TouchableOpacity onPress={() => setCameraVisible(true)}>
         {photo ? (
@@ -104,25 +183,28 @@ export default function EntryScreen() {
         </View>
       </Modal>
       <Text style={styles.subtitle}>Select your mood:</Text>
-      <View style={styles.moodRow}>
-        {moods.map((mood, idx) => (
-          <TouchableOpacity
-            key={mood.emoji}
-            style={[styles.moodButton, selectedMood === idx && styles.moodSelected]}
-            onPress={() => setSelectedMood(idx)}
-          >
-            <Text style={styles.moodEmoji}>{mood.emoji}</Text>
-            <Text style={styles.moodLabel}>{mood.label}</Text>
-          </TouchableOpacity>
-        ))}
+      <View style={{ width: '100%', alignItems: 'center' }}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingVertical: 8, alignItems: 'center' }}>
+          {moods.map((mood, idx) => (
+            <TouchableOpacity
+              key={mood.emoji + mood.label}
+              style={[styles.moodButton, selectedMood === idx && styles.moodSelected]}
+              onPress={() => setSelectedMood(idx)}
+            >
+              <Text style={styles.moodEmoji}>{mood.emoji}</Text>
+              <Text style={styles.moodLabel}>{mood.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
       </View>
       <TextInput
         style={styles.noteInput}
-        placeholder="Add a note (optional, max 280 chars)"
+        placeholder="Why are you feeling this way? (1–3 lines, optional)"
         value={note}
         onChangeText={setNote}
         maxLength={280}
         multiline
+        numberOfLines={3}
       />
       <TouchableOpacity style={styles.submitButton} onPress={saveEntry}>
         <Text style={styles.submitText}>Submit</Text>

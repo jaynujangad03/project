@@ -1,17 +1,137 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+
+const moodQuotes: { [key: string]: string[] } = {
+  'Happy': [
+    "Happiness is not out there, it's in you.",
+    "Joy is the simplest form of gratitude.",
+    "Your smile is contagious, keep spreading it!",
+    "Happiness is a choice, and you're choosing it well.",
+    "Every moment of joy is a victory worth celebrating.",
+    "Your positive energy lights up the world around you.",
+    "Happiness is the art of never holding in your mind the memory of any unpleasant thing.",
+    "The more you praise and celebrate your life, the more there is in life to celebrate.",
+    "Your happiness is a gift to everyone around you.",
+    "Today is a good day to have a good day.",
+    "Happiness is not something ready-made. It comes from your own actions.",
+    "You are worthy of all the happiness life has to offer.",
+    "Your joy is your strength.",
+    "Happiness is the natural state of mind when you're being true to yourself.",
+    "Every day brings new opportunities for happiness."
+  ],
+  'Sad': [
+    "It's okay to not be okay. Healing takes time.",
+    "Your feelings are valid, even the difficult ones.",
+    "This too shall pass. You are stronger than you know.",
+    "It's okay to cry. Tears are how your heart speaks.",
+    "You don't have to be strong all the time.",
+    "Sadness is just a visitor, not a permanent resident.",
+    "Your pain is real, and so is your strength.",
+    "It's okay to take time to heal.",
+    "You are not alone in your sadness.",
+    "Every storm runs out of rain.",
+    "Your feelings matter, even when they're heavy.",
+    "It's okay to ask for help when you're hurting.",
+    "You are allowed to feel sad without feeling guilty.",
+    "Healing is not linear, and that's perfectly normal.",
+    "Your heart is resilient, even when it's broken."
+  ],
+  'Anxious': [
+    "Breathe. You are safe in this moment.",
+    "Anxiety is just your mind being overprotective.",
+    "You've survived 100% of your worst days.",
+    "This feeling is temporary. You will get through this.",
+    "Take it one breath at a time.",
+    "You are stronger than your anxiety.",
+    "It's okay to feel anxious. It's not okay to let it control you.",
+    "Your mind is playing tricks on you. You are safe.",
+    "Anxiety is a liar. Don't believe everything you think.",
+    "You have the power to calm your mind.",
+    "This moment is all that matters right now.",
+    "You are not your thoughts. You are the observer of your thoughts.",
+    "Anxiety is temporary. Your strength is permanent.",
+    "You've handled difficult situations before. You can handle this too.",
+    "Focus on what you can control. Let go of what you can't."
+  ],
+  'Angry': [
+    "Your anger is valid, but it doesn't define you.",
+    "It's okay to be angry. It's not okay to let anger control you.",
+    "Anger is often a mask for other emotions.",
+    "You have the right to feel angry, but you also have the right to peace.",
+    "Your anger is a signal that something needs to change.",
+    "It's okay to take time to cool down.",
+    "Anger is energy. Channel it into something positive.",
+    "You are not your anger. You are so much more.",
+    "It's okay to be upset. It's not okay to stay upset.",
+    "Your feelings are real, but they don't have to rule you.",
+    "Anger is temporary. Your peace is worth more.",
+    "You have the power to choose how you respond.",
+    "It's okay to feel angry. It's not okay to hurt others.",
+    "Your anger is a teacher. What is it trying to tell you?",
+    "You deserve to feel calm and at peace."
+  ],
+  'Loved': [
+    "You are surrounded by love, even when you can't feel it.",
+    "Love is not something you find, it's something you become.",
+    "You are worthy of love, exactly as you are.",
+    "Your heart is a beautiful thing. Protect it.",
+    "Love yourself first, and everything else falls into place.",
+    "You are loved more than you could ever imagine.",
+    "Your capacity to love is infinite.",
+    "Love is the answer to everything.",
+    "You are deserving of all the love in the world.",
+    "Your love makes the world a better place.",
+    "You are a magnet for love and positivity.",
+    "Love yourself, and the world will love you back.",
+    "Your heart is full of beautiful things.",
+    "You are loved beyond measure.",
+    "Love is your superpower."
+  ],
+  'default': [
+    "Your feelings are valid.",
+    "You are not alone.",
+    "It's okay not to be okay.",
+    "You are stronger than you think.",
+    "Every day is a new beginning.",
+    "You are capable of amazing things.",
+    "Be kind to yourself.",
+    "Your presence is a gift to the world.",
+    "You are deserving of happiness.",
+    "Small steps lead to big progress.",
+    "You are enough, exactly as you are.",
+    "Your journey is unique and beautiful.",
+    "You have the power to create change.",
+    "Trust the process of your own growth.",
+    "You are becoming the person you're meant to be."
+  ]
+};
 
 export default function HomeScreen() {
   const router = useRouter();
-  const [userName, setUserName] = React.useState('');
-  const [lastMood, setLastMood] = React.useState('');
-  const [streak, setStreak] = React.useState(0);
-  const [streakMood, setStreakMood] = React.useState('');
+  const [userName, setUserName] = useState('');
+  const [lastMood, setLastMood] = useState('');
+  const [lastMoodLabel, setLastMoodLabel] = useState('');
+  const [streak, setStreak] = useState(0);
+  const [streakMood, setStreakMood] = useState('');
+  const [quote, setQuote] = useState('');
   const today = new Date().toLocaleDateString();
 
-  React.useEffect(() => {
+  useEffect(() => {
+    // Set initial quote and start rotating
+    const intervalId = setInterval(() => {
+      setQuote(currentQuote => {
+        const moodLabel = lastMoodLabel || 'default';
+        const quotes = moodQuotes[moodLabel] || moodQuotes['default'];
+        let nextQuote;
+        do {
+          nextQuote = quotes[Math.floor(Math.random() * quotes.length)];
+        } while (nextQuote === currentQuote && quotes.length > 1);
+        return nextQuote;
+      });
+    }, 3000); // Rotate every 3 seconds
+
     // Get current user's first name from registration
     const getCurrentUserFirstName = async () => {
       const userStr = await AsyncStorage.getItem('user');
@@ -27,6 +147,7 @@ export default function HomeScreen() {
         const entries = JSON.parse(data);
         if (entries.length > 0) {
           const last = entries[entries.length - 1];
+          setLastMoodLabel(last.mood.label);
           return `${last.mood.emoji} ${last.mood.label}`;
         }
       }
@@ -63,12 +184,21 @@ export default function HomeScreen() {
       if (!userStr) return;
       const user = JSON.parse(userStr);
       setUserName(user.firstName || 'User');
-      setLastMood(await getLastMood(user.email));
+      const lastMoodText = await getLastMood(user.email);
+      setLastMood(lastMoodText);
       const streakInfo = await getStreak(user.email);
       setStreak(streakInfo.streak);
       setStreakMood(streakInfo.mood);
+      
+      // Set initial quote based on mood
+      const moodLabel = lastMoodText !== 'No entry yet' ? lastMoodText.split(' ').slice(1).join(' ') : 'default';
+      const quotes = moodQuotes[moodLabel] || moodQuotes['default'];
+      setQuote(quotes[Math.floor(Math.random() * quotes.length)]);
     })();
-  }, []);
+
+    // Cleanup interval on unmount
+    return () => clearInterval(intervalId);
+  }, [lastMoodLabel]);
 
   const handleLogout = async () => {
     await AsyncStorage.removeItem('user');
@@ -79,6 +209,14 @@ export default function HomeScreen() {
     <View style={styles.container}>
       <Text style={styles.greeting}>Hello, {userName}!</Text>
       <Text style={styles.date}>{today}</Text>
+
+      <View style={styles.quoteContainer}>
+        <Text style={styles.quoteText}>"{quote}"</Text>
+        {lastMood !== 'No entry yet' && (
+          <Text style={styles.moodIndicator}>{lastMood}</Text>
+        )}
+      </View>
+
       <View style={styles.moodCard}>
         <Text style={styles.moodLabel}>Your last mood</Text>
         <Text style={styles.moodEmoji}>{lastMood}</Text>
@@ -87,6 +225,7 @@ export default function HomeScreen() {
         )}
       </View>
       <View style={styles.gridRow}>
+        
         <TouchableOpacity style={styles.gridButton} onPress={() => router.push('../(entry)/entry')}>
           <Text style={styles.gridIcon}>📸</Text>
           <Text style={styles.gridText}>Mood Photo</Text>
@@ -143,6 +282,28 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#888',
     marginBottom: 18,
+  },
+  quoteContainer: {
+    backgroundColor: '#e6f3ff',
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    marginBottom: 18,
+    alignItems: 'center',
+    width: '100%',
+  },
+  quoteText: {
+    fontSize: 15,
+    color: '#005a9e',
+    textAlign: 'center',
+    fontStyle: 'italic',
+    marginBottom: 8,
+  },
+  moodIndicator: {
+    fontSize: 12,
+    color: '#005a9e',
+    fontWeight: 'bold',
+    opacity: 0.8,
   },
   moodCard: {
     backgroundColor: '#fff',

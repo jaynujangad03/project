@@ -1,9 +1,15 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { useEffect, useState } from 'react';
-import { Image, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+
+const MONTHS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+];
 
 export default function MoodHistoryScreen() {
   const [entries, setEntries] = useState<any[]>([]);
+  const [currentDate, setCurrentDate] = useState(new Date());
 
   useEffect(() => {
     (async () => {
@@ -20,14 +26,42 @@ export default function MoodHistoryScreen() {
     })();
   }, []);
 
+  const filteredEntries = useMemo(() => {
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth(); // 0-indexed
+    return entries.filter(entry => {
+      const entryDate = new Date(entry.date);
+      return entryDate.getFullYear() === year && entryDate.getMonth() === month;
+    });
+  }, [entries, currentDate]);
+
+  const changeMonth = (offset: number) => {
+    setCurrentDate(prev => {
+      const newDate = new Date(prev);
+      newDate.setMonth(newDate.getMonth() + offset);
+      return newDate;
+    });
+  };
+
   return (
     <View style={styles.outer}>
       <Text style={styles.title}>Mood History Timeline</Text>
+      <View style={styles.pickerContainer}>
+        <TouchableOpacity onPress={() => changeMonth(-1)} style={styles.arrowButton}>
+          <Text style={styles.arrowText}>‹</Text>
+        </TouchableOpacity>
+        <Text style={styles.pickerText}>
+          {MONTHS[currentDate.getMonth()]} {currentDate.getFullYear()}
+        </Text>
+        <TouchableOpacity onPress={() => changeMonth(1)} style={styles.arrowButton}>
+          <Text style={styles.arrowText}>›</Text>
+        </TouchableOpacity>
+      </View>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {entries.length === 0 ? (
-          <Text style={styles.empty}>No entries yet.</Text>
+        {filteredEntries.length === 0 ? (
+          <Text style={styles.empty}>No entries for this month.</Text>
         ) : (
-          entries.map((entry, idx) => (
+          filteredEntries.map((entry, idx) => (
             <View key={idx} style={styles.entry}>
               <Image source={{ uri: entry.photo }} style={styles.photo} />
               <View style={{ flex: 1, marginLeft: 12 }}>
@@ -55,9 +89,30 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    marginBottom: 20,
+    marginBottom: 12,
     textAlign: 'center',
     marginTop: 60, // Add margin to push the title down
+  },
+  pickerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '80%',
+    marginBottom: 20,
+    paddingVertical: 8,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+  },
+  arrowButton: {
+    paddingHorizontal: 20,
+  },
+  arrowText: {
+    fontSize: 24,
+    color: '#007aff',
+  },
+  pickerText: {
+    fontSize: 18,
+    fontWeight: 'bold',
   },
   scrollContent: {
     alignItems: 'center',
@@ -68,6 +123,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: '#888',
     marginTop: 40,
+    fontSize: 16,
   },
   entry: {
     flexDirection: 'row',

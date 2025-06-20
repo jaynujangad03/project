@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Notifications from 'expo-notifications';
+import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Image, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
@@ -25,7 +26,45 @@ const moods = [
   { emoji: '😬', label: 'Awkward' },
   { emoji: '😭', label: 'Crying' },
   { emoji: '😋', label: 'Satisfied'},
- 
+];
+
+const motivationalQuotes = [
+  "Believe in yourself and all that you are.",
+  "Every day is a new beginning.",
+  "You are stronger than you think.",
+  "Difficult roads often lead to beautiful destinations.",
+  "Your only limit is your mind.",
+  "Stay positive, work hard, make it happen.",
+  "You are capable of amazing things.",
+  "Push yourself, because no one else is going to do it for you.",
+  "Great things never come from comfort zones.",
+  "Dream it. Wish it. Do it.",
+  "Success is not for the lazy.",
+  "Don't watch the clock; do what it does. Keep going.",
+  "The harder you work for something, the greater you'll feel when you achieve it.",
+  "Little by little, day by day, what is meant for you will find its way.",
+  "Doubt kills more dreams than failure ever will.",
+  "You don't have to be perfect to be amazing.",
+  "Start where you are. Use what you have. Do what you can.",
+  "Difficulties in life are intended to make us better, not bitter.",
+  "You are enough just as you are.",
+  "Keep going. Everything you need will come to you.",
+  "You are the author of your own story.",
+  "Progress, not perfection.",
+  "You are braver than you believe, stronger than you seem, and smarter than you think.",
+  "Mistakes are proof that you are trying.",
+  "The best way to get started is to quit talking and begin doing.",
+  "Difficult doesn't mean impossible.",
+  "You've got this!",
+  "Be the reason someone smiles today.",
+  "Your vibe attracts your tribe.",
+  "The only time you fail is when you fall down and stay down.",
+  "You are worthy of all the good things in life.",
+  "Don't be afraid to give up the good to go for the great.",
+  "If you get tired, learn to rest, not to quit.",
+  "You are making a difference every day.",
+  "The comeback is always stronger than the setback.",
+  "You are not alone."
 ];
 
 const moodColors: Record<string, string> = {
@@ -37,6 +76,7 @@ const moodColors: Record<string, string> = {
 };
 
 export default function EntryScreen() {
+  const router = useRouter();
   const [selectedMood, setSelectedMood] = useState<number | null>(null);
   const [note, setNote] = useState('');
   const [photo, setPhoto] = useState<string | null>(null);
@@ -46,6 +86,8 @@ export default function EntryScreen() {
   const cameraRef = React.useRef<null | any>(null);
   const [permission, requestPermission] = useCameraPermissions();
   const todayStr = new Date().toISOString().split('T')[0];
+  const [showQuoteModal, setShowQuoteModal] = useState(false);
+  const [quoteToShow, setQuoteToShow] = useState('');
 
   React.useEffect(() => {
     if (permission && permission.status !== 'granted') {
@@ -95,7 +137,7 @@ export default function EntryScreen() {
           await Notifications.scheduleNotificationAsync({
             content: {
               title: 'MoodCam Reminder',
-              body: 'How are you feeling today? Don’t forget to check in 💬',
+              body: "How are you feeling today? Don't forget to check in 💬",
               sound: true,
             },
             trigger: reminderTime as any, // Type workaround for Expo SDK 53+
@@ -144,10 +186,17 @@ export default function EntryScreen() {
       const entries = existing ? JSON.parse(existing) : [];
       entries.push(entry); // Allow multiple per day
       await AsyncStorage.setItem(key, JSON.stringify(entries));
-      alert('Mood entry saved!');
+      // Show random motivational quote
+      const randomIdx = Math.floor(Math.random() * motivationalQuotes.length);
+      setQuoteToShow(motivationalQuotes[randomIdx]);
+      setShowQuoteModal(true);
       setSelectedMood(null);
       setNote('');
       setPhoto(null);
+      setTimeout(() => {
+        setShowQuoteModal(false);
+        router.replace('/(dashboard)/home');
+      }, 2500);
     } catch (e) {
       alert('Failed to save entry.');
     }
@@ -209,6 +258,14 @@ export default function EntryScreen() {
       <TouchableOpacity style={styles.submitButton} onPress={saveEntry}>
         <Text style={styles.submitText}>Submit</Text>
       </TouchableOpacity>
+      <Modal visible={showQuoteModal} transparent animationType="fade">
+        <View style={styles.quoteModalOverlay}>
+          <View style={styles.quoteModalBox}>
+            <Text style={styles.quoteTitle}>Motivational Quote</Text>
+            <Text style={styles.quoteText}>{quoteToShow}</Text>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -295,4 +352,8 @@ const styles = StyleSheet.create({
     marginTop: 10,
     alignItems: 'center',
   },
+  quoteModalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' },
+  quoteModalBox: { backgroundColor: '#fff', borderRadius: 16, padding: 28, alignItems: 'center', maxWidth: 320, marginHorizontal: 24 },
+  quoteTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: 16, color: '#007aff' },
+  quoteText: { fontSize: 18, color: '#333', textAlign: 'center' },
 });

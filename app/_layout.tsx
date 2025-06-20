@@ -64,6 +64,10 @@ export default function RootLayout() {
         name="(dashboard)/settings"
         options={{ headerShown: false }}
       />
+      <Stack.Screen
+        name="(dashboard)/music-therapy"
+        options={{ headerShown: false }}
+      />
     </Stack>
     
   );
